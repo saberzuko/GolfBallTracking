@@ -1,0 +1,26 @@
+{
+    /***
+    * path to database directory
+    ***/
+    "database": "./database",
+    
+    /***
+    * HSV Values for the GREEN and the HOLE
+    ***/
+    "greenLower": [40, 60, 0],
+    "greenUpper": [70, 230, 255],
+    "holeLower": [0, 0, 95],
+    "holeUpper": [190, 40, 255],
+
+    /***
+    * Green PUT dimensions in mm
+    ***/
+    "put_height": 2153,
+    "velocity_start": 1150,
+    "velocity_stop": 1452,
+
+    /***
+    * Participant ID
+    ***/
+    "PIDs": [120469]
+}
