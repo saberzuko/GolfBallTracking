@@ -29,15 +29,28 @@ class BallDetector():
         rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]
         (tl, tr, br, bl) = rect
-        topWidth = distance.euclidean(tr, tl)
-        leftHeight = distance.euclidean(tr, br)
+        
+        # calculting the co-ordinates of the mask to hide the golf stick and masking the top quarter of the rectangle contour
+        if (tr[0] < br[0]):
+            mask_br_x = int(tr[0] + ((br[0] - tr[0])/2))
+        else:
+            mask_br_x = int(tr[0] - ((tr[0] - br[0])/2))
+        mask_br_y = int(tr[1] + ((br[1] - tr[1])/4))
+        mask_br = np.array([mask_br_x, mask_br_y], dtype=np.int32)
+        if (tl[0] < bl[0]):
+            mask_bl_x = int(tl[0] + ((bl[0] - tl[0])/2))
+        else:
+            mask_bl_x = int(tl[0] - ((tl[0] - bl[0])/2))
+        mask_bl_y = int(tl[1] + ((bl[1] - tl[1])/4))
+        mask_bl = np.array([mask_bl_x, mask_bl_y], dtype=np.int32)
+        mask_contours = np.array([tr, tl, mask_bl, mask_br], dtype=np.int32)
         
         # performing initial image processing to detect the ball using background subtraction
         green_gray = cv2.cvtColor(green, cv2.COLOR_BGR2GRAY)
         green_gray = cv2.GaussianBlur(green_gray, (5,5), 0)
         fgmask = self.fgbg.apply(green_gray)
         fgmask = cv2.erode(fgmask, None, iterations=3)
-        fgmask[int(tl[1]):int(tl[1])+int(leftHeight/4), int(tl[0]):int(tl[0])+int(topWidth)] = 0
+        cv2.drawContours(fgmask, [mask_contours], -1, 0, -1)
         
         # using the contours to detect the ball
         ball_contours, hierarchy = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

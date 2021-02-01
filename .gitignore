@@ -1,0 +1,3 @@
+database/*
+output/*
+tracker/utils/__pycache__/*
