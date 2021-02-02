@@ -58,16 +58,12 @@ class BallDetector():
         
         # if ball contours present shortlisting the ball from the contours
         if len(ball_contours) > 0:
-            for ball_c in ball_contours:
-                # ball_hull = cv2.convexHull(ball_c)
-                # (ball_x, ball_y, ball_w, ball_h) = cv2.boundingRect(ball_c)
-                # aspect_ratio = float(ball_w)/ball_h
-                # if 150 <= cv2.contourArea(ball_hull) <= 900 and 0.5 <= aspect_ratio <= 1.5:
-                try:
-                    ball_center = findCentre(ball_c)
-                    ball_centers.append(ball_center)
-                except:
-                    pass
+            max_c = max(ball_contours, key=cv2.contourArea)
+            try:
+                ball_center = findCentre(max_c)
+                ball_centers.append(ball_center)
+            except:
+                pass
         if len(ball_centers) > 0:
             return ball_centers
         else:
