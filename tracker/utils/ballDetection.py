@@ -50,8 +50,8 @@ class BallDetector():
         green_gray = cv2.GaussianBlur(green_gray, (5,5), 0)
         fgmask = self.fgbg.apply(green_gray)
         cv2.drawContours(fgmask, [mask_contours], -1, 0, -1)
-        fgmask = cv2.erode(fgmask, None, iterations=3)
-        fgmask = cv2.dilate(fgmask, None, iterations=3)
+        fgmask = cv2.erode(fgmask, None, iterations=4)
+        fgmask = cv2.dilate(fgmask, None, iterations=4)
         
         # using the contours to detect the ball
         ball_contours, _ = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

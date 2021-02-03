@@ -50,6 +50,7 @@ for PID in conf["PIDs"]:
         green_contours = frameHandler.detectGreen()
         hole_contours = frameHandler.detectHole(green_contours)
         (hole_x, hole_y, hole_w, hole_h) = cv2.boundingRect(hole_contours)
+        hole_h -= 10
         hole_cX, hole_cY = findCentre(hole_contours)
 
         # creating an instance of the BallDetector class to detect balls in the frame

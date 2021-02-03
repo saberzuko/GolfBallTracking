@@ -41,6 +41,19 @@ class FrameHandling():
         c = max(contours, key=cv2.contourArea)
         epsilon = 0.0185*cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, epsilon, True)
+        if (len(approx) == 4):
+            approx = np.reshape(approx, (4,2))
+            rect = np.zeros((4,2), dtype="float32")
+            s = approx.sum(axis=1)
+            rect[0] = approx[np.argmin(s)]
+            rect[2] = approx[np.argmax(s)]
+            diff = np.diff(approx, axis=1)
+            rect[1] = approx[np.argmin(diff)]
+            rect[3] = approx[np.argmax(diff)]
+            (tl, tr, br, bl) = rect
+            br[1] += 5
+            bl[1] += 5
+            approx = np.array([tr, tl, bl, br], dtype=np.int32)
         return approx
     
     def detectHole(self, contours):
