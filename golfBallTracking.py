@@ -2,6 +2,7 @@
 from tracker.utils.custom import warpPerspectiveCustom
 from tracker.utils.ballDetection import BallDetector
 from tracker.utils.intialFrame import FrameHandling
+from tracker.utils.custom import BallDynamics
 from tracker.utils.custom import CSV_Writer
 from tracker.utils.custom import listVideos
 from tracker.utils.custom import findCentre
@@ -51,6 +52,7 @@ for PID in conf["PIDs"]:
         hole_contours = frameHandler.detectHole(green_contours)
         (hole_x, hole_y, hole_w, hole_h) = cv2.boundingRect(hole_contours)
         hole_h -= 10
+        holerect = (hole_x, hole_y, hole_w, hole_h)
         hole_cX, hole_cY = findCentre(hole_contours)
 
         # creating an instance of the BallDetector class to detect balls in the frame
@@ -74,6 +76,9 @@ for PID in conf["PIDs"]:
             hole_cX_warped, hole_cY_warped = warpPerspectiveCustom((hole_cX, hole_cY), M)
             base_line = np.array([hole_cX_warped, 0], dtype="float32") - np.array([hole_cX_warped, hole_cY_warped], dtype="float32")
             
+            # creating an object for handling the dynamics of the ball
+            balldyanmics = BallDynamics(velocity_start_pixel, velocity_stop_pixel, conf["fps"], holerect)
+            
             # creating a video writer
             vidout = cv2.VideoWriter(os.path.join(processed_output_path, video_name), fourcc, 30, 
                         (frame.shape[1], frame.shape[0]), True)
@@ -95,6 +100,18 @@ for PID in conf["PIDs"]:
                                 minBallHoleDistance = ballHoleDistance
                                 actualBallCenter = ball_center
                     cv2.circle(frame, actualBallCenter, 4, (0, 0, 255), -1)
+                    ball_cX_warped, ball_cY_warped = warpPerspectiveCustom(actualBallCenter, M)
+                    
+                    # calculating the velocity of the ball in pixels/second
+                    ballPixelVelocity = balldyanmics.velocityCal(ball_cX_warped, ball_cY_warped)
+                    if ballPixelVelocity is not None:
+                        # converting from pixels/second to metres/second
+                        ballVelocity = (ballPixelVelocity/float(height_ratio))/1000.0
+                    else:
+                        ballVelocity = None
+                    
+                    # checking the make of the ball
+                    ballMake = balldyanmics.ballMake(actualBallCenter[0], actualBallCenter[1])
                 
                 # drawing the contours on the frame
                 cv2.drawContours(frame, [green_contours], -1, (0, 0, 255), 2)
@@ -106,6 +123,8 @@ for PID in conf["PIDs"]:
                 # writing the processed and warped videos
                 vidout.write(frame)
                 vidout2.write(warp)
+
+
 
                 success, frame = vidcap.read()
                 if success == False:

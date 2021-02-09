@@ -5,6 +5,11 @@
     "database": "./database",
     
     /***
+    * FPS of the captured videos
+    ***/
+    "fps": 30,
+    
+    /***
     * HSV Values for the GREEN and the HOLE
     ***/
     "greenLower": [40, 60, 0],

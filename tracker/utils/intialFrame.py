@@ -51,8 +51,8 @@ class FrameHandling():
             rect[1] = approx[np.argmin(diff)]
             rect[3] = approx[np.argmax(diff)]
             (tl, tr, br, bl) = rect
-            br[1] += 5
-            bl[1] += 5
+            br[1] += 10
+            bl[1] += 10
             approx = np.array([tr, tl, bl, br], dtype=np.int32)
         return approx
     
