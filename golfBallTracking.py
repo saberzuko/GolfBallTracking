@@ -52,11 +52,6 @@ for PID in conf["PIDs"]:
         frameHandler = FrameHandling(frame, conf["greenLower"], conf["greenUpper"], 
                             conf["holeLower"], conf["holeUpper"])
         green_contours = frameHandler.detectGreen()
-        hole_contours = frameHandler.detectHole(green_contours)
-        (hole_x, hole_y, hole_w, hole_h) = cv2.boundingRect(hole_contours)
-        hole_h -= 10
-        holerect = (hole_x, hole_y, hole_w, hole_h)
-        hole_cX, hole_cY = findCentre(hole_contours)
 
         # creating an instance of the BallDetector class to detect balls in the frame
         ballDetector = BallDetector(green_contours)
@@ -66,17 +61,26 @@ for PID in conf["PIDs"]:
         # the green
         if len(green_contours) == 4:
             # calculating the projection matrix for the green
-            maxDims, M = frameHandler.fourPointTransform(green_contours)
+            maxDims, M, _ = frameHandler.fourPointTransform(green_contours)
 
             # warping the frame to bird's eye view
             warp = cv2.warpPerspective(frame, M, maxDims)
             warp_height, warp_width = warp.shape[:2]
 
             # variable initialization related to calculation of speed, angle and make
-            height_ratio = warp_height/conf["put_height"]; velocity_start_pixel = conf["velocity_start"] * height_ratio
+            height_ratio = warp_height/conf["put_height"]; width_ratio = warp_width/conf["put_width"]
+            velocity_start_pixel = conf["velocity_start"] * height_ratio
             velocity_stop_pixel = conf["velocity_stop"] * height_ratio; ballAngle = None; ballVelocity = None; ballMake = False
-            # finding the warped co-ordinates of the hole centres
-            hole_cX_warped, hole_cY_warped = warpPerspectiveCustom((hole_cX, hole_cY), M)
+            
+            # the hole co-ordinates in actual world
+            holeDims = (conf["hole_x"], conf["hole_y"], conf["hole_w"], conf["hole_h"])
+            holeCentres = (conf["hole_cX"], conf["hole_cY"])
+            
+            # finding the original and warped co-ordinates of the hole centres
+            holerect, (hole_cX, hole_cY), (hole_cX_warped, hole_cY_warped) = frameHandler.detectHole(green_contours, height_ratio, 
+                                                                                    width_ratio, holeDims, holeCentres)
+            (hole_x, hole_y, hole_w, hole_h) = holerect
+            
             base_line = np.array([hole_cX_warped, 0], dtype="float32") - np.array([hole_cX_warped, hole_cY_warped], dtype="float32")
             
             # creating an object for handling the dynamics of the ball

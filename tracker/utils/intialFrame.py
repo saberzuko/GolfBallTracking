@@ -1,4 +1,5 @@
 # import the necessary packages
+from tracker.utils.custom import warpPerspectiveCustom
 from scipy.spatial import distance
 from skimage import measure
 import numpy as np
@@ -15,6 +16,8 @@ class FrameHandling():
         self.greenUpper = np.array(greenUpper)
         self.holeLower = np.array(holeLower)
         self.holeUpper = np.array(holeUpper)
+        self.rect = None
+        self.dist = None
     
     def detectGreen(self):
         # performing initial image processing to detect the green area in the frame
@@ -43,58 +46,62 @@ class FrameHandling():
         approx = cv2.approxPolyDP(c, epsilon, True)
         if (len(approx) == 4):
             approx = np.reshape(approx, (4,2))
-            rect = np.zeros((4,2), dtype="float32")
+            self.rect = np.zeros((4,2), dtype="float32")
             s = approx.sum(axis=1)
-            rect[0] = approx[np.argmin(s)]
-            rect[2] = approx[np.argmax(s)]
+            self.rect[0] = approx[np.argmin(s)]
+            self.rect[2] = approx[np.argmax(s)]
             diff = np.diff(approx, axis=1)
-            rect[1] = approx[np.argmin(diff)]
-            rect[3] = approx[np.argmax(diff)]
-            (tl, tr, br, bl) = rect
+            self.rect[1] = approx[np.argmin(diff)]
+            self.rect[3] = approx[np.argmax(diff)]
+            (tl, tr, br, bl) = self.rect
             br[1] += 10
             bl[1] += 10
             approx = np.array([tr, tl, bl, br], dtype=np.int32)
         return approx
     
-    def detectHole(self, contours):
-        # function to detect the hole in the green area
-        green_mask = np.zeros(self.frame.shape[:2], dtype="uint8")
+    def detectHole(self, contours, height_ratio, width_ratio, holeDims, holeCentres):
         
-        # grabbing the green contours and using the contours to mask the green area
-        cv2.drawContours(green_mask, [contours], -1, 255, -1)
-        green = cv2.bitwise_and(self.frame, self.frame, mask=green_mask)
-        green_hsv = cv2.cvtColor(green, cv2.COLOR_BGR2HSV)
-        hole_thresh = cv2.inRange(green_hsv, self.holeLower, self.holeUpper)
-        
-        # image processing to detect the hole
-        hole_thresh = cv2.erode(hole_thresh, None, iterations=1)
-        hole_thresh = cv2.dilate(hole_thresh, None, iterations=10)
+        # calculating the hole co-ordinates in the wapred figure from the real world co-ordinates
+        (_, warpHeight), _, MInverse = self.fourPointTransform(contours)
+        hole_cX_warped = int(holeCentres[0] * width_ratio)
+        hole_cY_warped = int(warpHeight - (holeCentres[1] * height_ratio))
+        hole_x_warped = int(holeDims[0] * width_ratio)
+        hole_y_warped = int(warpHeight - (holeDims[1] * height_ratio)) - 5
+        hole_w_warped = int(holeDims[2] * width_ratio)
+        hole_h_warped = int(holeDims[3] * height_ratio) - 5
 
-        # detecting the contours of the hole region
-        hole_contours, _ = cv2.findContours(hole_thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        hole_c = max(hole_contours, key=cv2.contourArea)
-        return hole_c
+        # using the inverse perspective transform to get the hole co-ordinates in the original video
+        hole_cX, hole_cY = warpPerspectiveCustom((hole_cX_warped, hole_cY_warped), MInverse)
+        hole_x, hole_y = warpPerspectiveCustom((hole_x_warped, hole_y_warped), MInverse)
+        hole_xw, hole_yh = warpPerspectiveCustom((hole_x_warped + hole_w_warped, hole_y_warped + hole_h_warped), MInverse)
+        hole_w = hole_xw - hole_x
+        hole_h = hole_yh - hole_y
+        holerect = (hole_x, hole_y, hole_w, hole_h)
+        hole_centre = (hole_cX, hole_cY)
+        hole_centre_warped = (hole_cX_warped, hole_cY_warped)
+        
+        return(holerect, hole_centre, hole_centre_warped)
 
     
     def fourPointTransform(self, contours):
         # defining the four point transform to get the bird's eye view of the green area
         pts = contours.reshape(4, 2)
-        rect = np.zeros((4,2), dtype="float32")
+        self.rect = np.zeros((4,2), dtype="float32")
         s = pts.sum(axis = 1)
         
         # the minimum sum of the co-ordinates (x+y) correspond to the top left corner of the green
-        rect[0] = pts[np.argmin(s)]
+        self.rect[0] = pts[np.argmin(s)]
         
         # the maximum sum of the co-ordinates correspond to the bottom right of the green
-        rect[2] = pts[np.argmax(s)]
+        self.rect[2] = pts[np.argmax(s)]
         diff = np.diff(pts, axis=1)
         
         # the minimum difference of the co-ordinates (x-y) corresponds to the top right corner of the green
-        rect[1] = pts[np.argmin(diff)]
+        self.rect[1] = pts[np.argmin(diff)]
         
         # the maximum difference of the co-ordinates (x-y) corresponds to the bottom left corner of the green
-        rect[3] = pts[np.argmax(diff)]
-        (tl, tr, br, bl) = rect
+        self.rect[3] = pts[np.argmax(diff)]
+        (tl, tr, br, bl) = self.rect
         
         # computing the width and the height of each side
         bottomWidth = distance.euclidean(br, bl)
@@ -106,6 +113,7 @@ class FrameHandling():
         maxHeight = int(max(leftHeight, rightHeight))
         
         # new co-ordinates of the frame from the bird's eye view.
-        dist = np.array([[0,0], [int(maxWidth)-1, 0], [int(maxWidth)-1, int(maxHeight)-1], [0, int(maxHeight)-1]], dtype="float32")
-        M = cv2.getPerspectiveTransform(rect, dist)
-        return ((maxWidth, maxHeight), M)
+        self.dist = np.array([[0,0], [int(maxWidth)-1, 0], [int(maxWidth)-1, int(maxHeight)-1], [0, int(maxHeight)-1]], dtype="float32")
+        M = cv2.getPerspectiveTransform(self.rect, self.dist)
+        M_inverse = cv2.getPerspectiveTransform(self.dist, self.rect)
+        return ((maxWidth, maxHeight), M, M_inverse)

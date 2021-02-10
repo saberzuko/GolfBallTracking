@@ -12,8 +12,8 @@
     /***
     * HSV Values for the GREEN and the HOLE
     ***/
-    "greenLower": [40, 60, 0],
-    "greenUpper": [70, 230, 255],
+    "greenLower": [45, 50, 0],
+    "greenUpper": [90, 255, 255],
     "holeLower": [0, 0, 95],
     "holeUpper": [190, 40, 255],
 
@@ -21,11 +21,22 @@
     * Green PUT dimensions in mm
     ***/
     "put_height": 2153,
+    "put_width": 220,
     "velocity_start": 1150,
     "velocity_stop": 1452,
 
     /***
+    * Hole dimensions in mm
+    ***/
+    "hole_cX": 97,
+    "hole_cY": 65,
+    "hole_x": 42,
+    "hole_y": 120,
+    "hole_w": 120,
+    "hole_h": 120,
+    
+    /***
     * Participant ID
     ***/
-    "PIDs": [130757]
+    "PIDs": [120469, 125424, 138425, 144192, 190402, 192191, 218760, 242107, 242260, 248833, 277723, 284158]
 }
