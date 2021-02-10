@@ -1,8 +1,9 @@
 # import the necessary packages
 from scipy.spatial import distance
 from glob import glob
-import os
+import numpy as np
 import cv2
+import os
 
 # the function is used to calculate the moemnts and return the center x and y co-ordinates
 def findCentre(contours):
@@ -51,7 +52,7 @@ class CSV_Writer():
 # the angle of the ball before entering the hole and the make (entered hole or not)
 class BallDynamics():
     # initializing the velocity start and stop coordinates
-    def __init__(self, velocityStart, velocityStop, fps, holerect):
+    def __init__(self, velocityStart, velocityStop, fps, holerect, holeCentreWarped):
         self.velocityStart = velocityStart
         self.velocityStop = velocityStop
         self.fps = fps
@@ -59,6 +60,8 @@ class BallDynamics():
         self.hole_y = holerect[1]
         self.hole_w = holerect[2]
         self.hole_h = holerect[3]
+        self.hole_cX_warped = holeCentreWarped[0]
+        self.hole_cY_warped = holeCentreWarped[1]
         self.velTrackFlag = True
         self.destReachedFlag = False
         self.initReachedFlag = False
@@ -108,3 +111,14 @@ class BallDynamics():
         if self.ballinFlag and (self.hole_x > ballX) or (ballX > self.hole_x + self.hole_w) or (self.hole_y > ballY) or (ballY > self.hole_y + self.hole_h):
             self.ballinFlag = False
         return self.ballinFlag
+
+    # function used to calculate the angle of the ball with the perpendicular
+    def angleCalc(self):
+        if (self.destX is not None) and (self.destY is not None):
+            perpedicularLine = np.array([self.hole_cX_warped, self.hole_cY_warped]) - np.array([self.hole_cX_warped, 0])
+            angleLine = np.array([self.destX, self.destY]) - np.array([self.initX, self.initY])
+            cosineAngle = np.dot(perpedicularLine, angleLine)/(np.linalg.norm(perpedicularLine) * np.linalg.norm(angleLine))
+            angle = np.arccos(cosineAngle)*180/np.pi
+            return angle
+        else:
+            return None

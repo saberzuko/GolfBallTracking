@@ -41,6 +41,9 @@ for PID in conf["PIDs"]:
     for video in videos:
         bar.next()
         video_name = video[video.rfind("/")+1:].split(".")[0] + ".avi"
+        ids = video[video.rfind("/")+1:].split("_")
+        SID = ids[1]
+        PtID = ids[2].split(".")[0]
         vidcap = cv2.VideoCapture(video)
         success, frame = vidcap.read()
         frame = cv2.resize(frame, (int(frame.shape[1]/1.25), int(frame.shape[0]/1.25)))
@@ -71,13 +74,13 @@ for PID in conf["PIDs"]:
 
             # variable initialization related to calculation of speed, angle and make
             height_ratio = warp_height/conf["put_height"]; velocity_start_pixel = conf["velocity_start"] * height_ratio
-            velocity_stop_pixel = conf["velocity_stop"] * height_ratio
+            velocity_stop_pixel = conf["velocity_stop"] * height_ratio; ballAngle = None; ballVelocity = None; ballMake = False
             # finding the warped co-ordinates of the hole centres
             hole_cX_warped, hole_cY_warped = warpPerspectiveCustom((hole_cX, hole_cY), M)
             base_line = np.array([hole_cX_warped, 0], dtype="float32") - np.array([hole_cX_warped, hole_cY_warped], dtype="float32")
             
             # creating an object for handling the dynamics of the ball
-            balldyanmics = BallDynamics(velocity_start_pixel, velocity_stop_pixel, conf["fps"], holerect)
+            balldyanmics = BallDynamics(velocity_start_pixel, velocity_stop_pixel, conf["fps"], holerect, (hole_cX, hole_cY))
             
             # creating a video writer
             vidout = cv2.VideoWriter(os.path.join(processed_output_path, video_name), fourcc, 30, 
@@ -107,6 +110,7 @@ for PID in conf["PIDs"]:
                     if ballPixelVelocity is not None:
                         # converting from pixels/second to metres/second
                         ballVelocity = (ballPixelVelocity/float(height_ratio))/1000.0
+                        ballAngle = balldyanmics.angleCalc()
                     else:
                         ballVelocity = None
                     
@@ -124,12 +128,19 @@ for PID in conf["PIDs"]:
                 vidout.write(frame)
                 vidout2.write(warp)
 
-
-
                 success, frame = vidcap.read()
                 if success == False:
                     break
                 frame = cv2.resize(frame, (int(frame.shape[1]/1.25), int(frame.shape[0]/1.25)))
+            
+            if ballAngle is not None and ballVelocity is not None:
+                csv.csvUpdate(PID=str(PID), SID=str(SID), PtID=str(PtID), speed=round(ballVelocity,2), angle=round(ballAngle,2), 
+                make=ballMake, processing=True)
+            else:
+                csv.csvUpdate(PID=str(PID), SID=str(SID), PtID=str(PtID), processing=False)
+        
+        else:
+            csv.csvUpdate(PID=str(PID), SID=str(SID), PtID=str(PtID), processing=False)
     
     bar.finish()
 os.system("spd-say 'Processing Done'")
