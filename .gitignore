@@ -1,3 +1,5 @@
 database/*
 output/*
 tracker/utils/__pycache__/*
+conf/confg.json
+.gitignore

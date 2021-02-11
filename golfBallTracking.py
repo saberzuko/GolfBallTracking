@@ -51,10 +51,14 @@ for PID in conf["PIDs"]:
         # creating an instance of the FrameHandling class to detect the green area and the hole in the frame
         frameHandler = FrameHandling(frame, conf["greenLower"], conf["greenUpper"], 
                             conf["holeLower"], conf["holeUpper"])
-        green_contours = frameHandler.detectGreen()
+        green_contours = np.array([])
+        try:
+            green_contours = frameHandler.detectGreen()
+            ballDetector = BallDetector(green_contours)
+        except:
+            pass
 
         # creating an instance of the BallDetector class to detect balls in the frame
-        ballDetector = BallDetector(green_contours)
         
         # if the number of sides of the green area is 4 then the detected area is a rectangle
         # then we perform 4 point perspective transform to get the bird's eye view of 
